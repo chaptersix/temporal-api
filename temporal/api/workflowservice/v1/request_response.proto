@@ -2931,6 +2931,10 @@ message StartActivityExecutionRequest {
     temporal.api.sdk.v1.UserMetadata user_metadata = 17;
     // Priority metadata.
     temporal.api.common.v1.Priority priority = 18;
+
+    // Callbacks to invoke on activity completion.
+    // Used internally by the scheduler to track activity lifecycle.
+    repeated temporal.api.common.v1.Callback completion_callbacks = 19;
 }
 
 message StartActivityExecutionResponse {

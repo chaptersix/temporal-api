@@ -20,6 +20,8 @@ import "google/protobuf/timestamp.proto";
 import "temporal/api/common/v1/message.proto";
 import "temporal/api/enums/v1/schedule.proto";
 import "temporal/api/enums/v1/workflow.proto";
+import "temporal/api/sdk/v1/user_metadata.proto";
+import "temporal/api/taskqueue/v1/message.proto";
 import "temporal/api/workflow/v1/message.proto";
 
 // CalendarSpec describes an event specification relative to the calendar,
@@ -229,6 +231,54 @@ message SchedulePolicies {
     bool keep_original_workflow_id = 4;
 }
 
+// ScheduleActivityAction describes a standalone activity to start on each schedule trigger.
+message ScheduleActivityAction {
+    // The activity ID. May have a timestamp appended for uniqueness.
+    string activity_id = 1;
+
+    // The type of the activity to execute.
+    temporal.api.common.v1.ActivityType activity_type = 2;
+
+    // Task queue to schedule the activity on.
+    temporal.api.taskqueue.v1.TaskQueue task_queue = 3;
+
+    // Serialized arguments to the activity.
+    temporal.api.common.v1.Payloads input = 4;
+
+    // Timeout from schedule to close of the activity.
+    // (-- api-linter: core::0140::prepositions=disabled
+    //     aip.dev/not-precedent: standard name of field --)
+    google.protobuf.Duration schedule_to_close_timeout = 5;
+
+    // Timeout from schedule to start of the activity.
+    // (-- api-linter: core::0140::prepositions=disabled
+    //     aip.dev/not-precedent: standard name of field --)
+    google.protobuf.Duration schedule_to_start_timeout = 6;
+
+    // Timeout from start to close of the activity.
+    // (-- api-linter: core::0140::prepositions=disabled
+    //     aip.dev/not-precedent: standard name of field --)
+    google.protobuf.Duration start_to_close_timeout = 7;
+
+    // Heartbeat timeout.
+    google.protobuf.Duration heartbeat_timeout = 8;
+
+    // Retry policy for the activity.
+    temporal.api.common.v1.RetryPolicy retry_policy = 9;
+
+    // Request header for context propagation.
+    temporal.api.common.v1.Header header = 10;
+
+    // Search attributes for the activity.
+    temporal.api.common.v1.SearchAttributes search_attributes = 11;
+
+    // Metadata for display purposes.
+    temporal.api.sdk.v1.UserMetadata user_metadata = 12;
+
+    // Priority metadata.
+    temporal.api.common.v1.Priority priority = 13;
+}
+
 message ScheduleAction {
     oneof action {
         // All fields of NewWorkflowExecutionInfo are valid except for:
@@ -237,6 +287,11 @@ message ScheduleAction {
         // The workflow id of the started workflow may not match this exactly,
         // it may have a timestamp appended for uniqueness.
         temporal.api.workflow.v1.NewWorkflowExecutionInfo start_workflow = 1;
+
+        // Start a standalone activity execution.
+        // The activity id of the started activity may not match this exactly,
+        // it may have a timestamp appended for uniqueness.
+        ScheduleActivityAction start_activity = 2;
     }
 }
 
@@ -253,6 +308,13 @@ message ScheduleActionResult {
     // If the action was start_workflow, this field will reflect an
     // eventually-consistent view of the started workflow's status.
     temporal.api.enums.v1.WorkflowExecutionStatus start_workflow_status = 12;
+
+    // If action was start_activity:
+    string start_activity_result_activity_id = 21;
+    string start_activity_result_run_id = 22;
+    // Uses WorkflowExecutionStatus (not ActivityExecutionStatus) because the
+    // status values are semantically identical and keeps completion handling uniform.
+    temporal.api.enums.v1.WorkflowExecutionStatus start_activity_status = 23;
 }
 
 message ScheduleState {
@@ -349,6 +411,16 @@ message ScheduleInfo {
 
     // Deprecated.
     string invalid_schedule_error = 8 [deprecated = true];
+
+    // Currently-running activities started by this schedule (when action is start_activity).
+    // Only populated for activity schedule actions.
+    repeated ScheduleActivityExecution running_activities = 12;
+}
+
+// Identifies a running activity started by a schedule.
+message ScheduleActivityExecution {
+    string activity_id = 1;
+    string run_id = 2;
 }
 
 message Schedule {
@@ -369,6 +441,9 @@ message ScheduleListInfo {
     // Action is a oneof field, but we need to encode this in JSON and oneof fields don't work
     // well with JSON. If action is start_workflow, this is set:
     temporal.api.common.v1.WorkflowType workflow_type = 2;
+
+    // Set if the schedule action is start_activity.
+    temporal.api.common.v1.ActivityType activity_type = 10;
 
     // From state:
     string notes = 3;
