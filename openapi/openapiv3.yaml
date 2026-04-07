@@ -11345,6 +11345,80 @@ components:
             - REPLICATION_STATE_HANDOVER
           type: string
           format: enum
+    NewActivityExecutionInfo:
+      type: object
+      properties:
+        activityId:
+          type: string
+          description: Identifier for this activity. Must be unique among activities in the same namespace.
+        activityType:
+          allOf:
+            - $ref: '#/components/schemas/ActivityType'
+          description: The type of the activity to execute.
+        taskQueue:
+          allOf:
+            - $ref: '#/components/schemas/TaskQueue'
+          description: Task queue to schedule the activity on.
+        input:
+          allOf:
+            - $ref: '#/components/schemas/Payloads'
+          description: Serialized arguments to the activity.
+        scheduleToCloseTimeout:
+          pattern: ^-?(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,9})?s$
+          type: string
+          description: |-
+            Indicates how long the caller is willing to wait for an activity completion. Limits how long
+             retries will be attempted. Either this or `start_to_close_timeout` must be specified.
+
+             (-- api-linter: core::0140::prepositions=disabled
+                 aip.dev/not-precedent: "to" is used to indicate interval. --)
+        scheduleToStartTimeout:
+          pattern: ^-?(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,9})?s$
+          type: string
+          description: |-
+            Limits time an activity task can stay in a task queue before a worker picks it up. This
+             timeout is always non retryable, as all a retry would achieve is to put it back into the same
+             queue. Defaults to `schedule_to_close_timeout` if not specified.
+
+             (-- api-linter: core::0140::prepositions=disabled
+                 aip.dev/not-precedent: "to" is used to indicate interval. --)
+        startToCloseTimeout:
+          pattern: ^-?(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,9})?s$
+          type: string
+          description: |-
+            Maximum time an activity is allowed to execute after being picked up by a worker. This
+             timeout is always retryable. Either this or `schedule_to_close_timeout` must be
+             specified.
+
+             (-- api-linter: core::0140::prepositions=disabled
+                 aip.dev/not-precedent: "to" is used to indicate interval. --)
+        heartbeatTimeout:
+          pattern: ^-?(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,9})?s$
+          type: string
+          description: Maximum permitted time between successful worker heartbeats.
+        retryPolicy:
+          allOf:
+            - $ref: '#/components/schemas/RetryPolicy'
+          description: The retry policy for the activity. Will never exceed `schedule_to_close_timeout`.
+        header:
+          allOf:
+            - $ref: '#/components/schemas/Header'
+          description: Header for context propagation and tracing purposes.
+        searchAttributes:
+          allOf:
+            - $ref: '#/components/schemas/SearchAttributes'
+          description: Search attributes for indexing.
+        userMetadata:
+          allOf:
+            - $ref: '#/components/schemas/UserMetadata'
+          description: Metadata for use by user interfaces to display the fixed as-of-start summary and details of the activity.
+        priority:
+          allOf:
+            - $ref: '#/components/schemas/Priority'
+          description: Priority metadata.
+      description: |-
+        NewActivityExecutionInfo is a shared message that encapsulates all the
+         required arguments to starting a standalone activity in different contexts.
     NewWorkflowExecutionInfo:
       type: object
       properties:
@@ -13367,6 +13441,14 @@ components:
              - cron_schedule
              The workflow id of the started workflow may not match this exactly,
              it may have a timestamp appended for uniqueness.
+        startActivity:
+          allOf:
+            - $ref: '#/components/schemas/NewActivityExecutionInfo'
+          description: |-
+            All fields of NewActivityExecutionInfo are valid except for:
+             - activity_id (will be set by the server)
+             The activity id of the started activity may not match this exactly,
+             it may have a timestamp appended for uniqueness.
     ScheduleActionResult:
       type: object
       properties:
@@ -13398,6 +13480,35 @@ components:
             If the action was start_workflow, this field will reflect an
              eventually-consistent view of the started workflow's status.
           format: enum
+        startActivityResultActivityId:
+          type: string
+          description: 'If action was start_activity:'
+        startActivityResultRunId:
+          type: string
+        startActivityStatus:
+          enum:
+            - WORKFLOW_EXECUTION_STATUS_UNSPECIFIED
+            - WORKFLOW_EXECUTION_STATUS_RUNNING
+            - WORKFLOW_EXECUTION_STATUS_COMPLETED
+            - WORKFLOW_EXECUTION_STATUS_FAILED
+            - WORKFLOW_EXECUTION_STATUS_CANCELED
+            - WORKFLOW_EXECUTION_STATUS_TERMINATED
+            - WORKFLOW_EXECUTION_STATUS_CONTINUED_AS_NEW
+            - WORKFLOW_EXECUTION_STATUS_TIMED_OUT
+            - WORKFLOW_EXECUTION_STATUS_PAUSED
+          type: string
+          description: |-
+            Uses WorkflowExecutionStatus (not ActivityExecutionStatus) because the
+             status values are semantically identical and keeps completion handling uniform.
+          format: enum
+    ScheduleActivityExecution:
+      type: object
+      properties:
+        activityId:
+          type: string
+        runId:
+          type: string
+      description: Identifies a running activity started by a schedule.
     ScheduleInfo:
       type: object
       properties:
@@ -13450,6 +13561,13 @@ components:
         invalidScheduleError:
           type: string
           description: Deprecated.
+        runningActivities:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScheduleActivityExecution'
+          description: |-
+            Currently-running activities started by this schedule (when action is start_activity).
+             Only populated for activity schedule actions.
     ScheduleListEntry:
       type: object
       properties:
@@ -13478,6 +13596,10 @@ components:
             From action:
              Action is a oneof field, but we need to encode this in JSON and oneof fields don't work
              well with JSON. If action is start_workflow, this is set:
+        activityType:
+          allOf:
+            - $ref: '#/components/schemas/ActivityType'
+          description: Set if the schedule action is start_activity.
         notes:
           type: string
           description: 'From state:'

@@ -14420,6 +14420,64 @@
       ],
       "default": "NAMESPACE_STATE_UNSPECIFIED"
     },
+    "v1NewActivityExecutionInfo": {
+      "type": "object",
+      "properties": {
+        "activityId": {
+          "type": "string",
+          "description": "Identifier for this activity. Must be unique among activities in the same namespace."
+        },
+        "activityType": {
+          "$ref": "#/definitions/v1ActivityType",
+          "description": "The type of the activity to execute."
+        },
+        "taskQueue": {
+          "$ref": "#/definitions/v1TaskQueue",
+          "description": "Task queue to schedule the activity on."
+        },
+        "input": {
+          "$ref": "#/definitions/v1Payloads",
+          "description": "Serialized arguments to the activity."
+        },
+        "scheduleToCloseTimeout": {
+          "type": "string",
+          "description": "Indicates how long the caller is willing to wait for an activity completion. Limits how long\nretries will be attempted. Either this or `start_to_close_timeout` must be specified.\n"
+        },
+        "scheduleToStartTimeout": {
+          "type": "string",
+          "description": "Limits time an activity task can stay in a task queue before a worker picks it up. This\ntimeout is always non retryable, as all a retry would achieve is to put it back into the same\nqueue. Defaults to `schedule_to_close_timeout` if not specified.\n"
+        },
+        "startToCloseTimeout": {
+          "type": "string",
+          "description": "Maximum time an activity is allowed to execute after being picked up by a worker. This\ntimeout is always retryable. Either this or `schedule_to_close_timeout` must be\nspecified.\n"
+        },
+        "heartbeatTimeout": {
+          "type": "string",
+          "description": "Maximum permitted time between successful worker heartbeats."
+        },
+        "retryPolicy": {
+          "$ref": "#/definitions/v1RetryPolicy",
+          "description": "The retry policy for the activity. Will never exceed `schedule_to_close_timeout`."
+        },
+        "header": {
+          "$ref": "#/definitions/v1Header",
+          "description": "Header for context propagation and tracing purposes."
+        },
+        "searchAttributes": {
+          "$ref": "#/definitions/v1SearchAttributes",
+          "description": "Search attributes for indexing."
+        },
+        "userMetadata": {
+          "$ref": "#/definitions/v1UserMetadata",
+          "description": "Metadata for use by user interfaces to display the fixed as-of-start summary and details of the activity."
+        },
+        "priority": {
+          "$ref": "#/definitions/v1Priority",
+          "description": "Priority metadata."
+        }
+      },
+      "description": "NewActivityExecutionInfo is a shared message that encapsulates all the\nrequired arguments to starting a standalone activity in different contexts."
+    },
     "v1NewWorkflowExecutionInfo": {
       "type": "object",
       "properties": {
@@ -15931,6 +15989,10 @@
         "startWorkflow": {
           "$ref": "#/definitions/v1NewWorkflowExecutionInfo",
           "description": "All fields of NewWorkflowExecutionInfo are valid except for:\n- workflow_id_reuse_policy\n- cron_schedule\nThe workflow id of the started workflow may not match this exactly,\nit may have a timestamp appended for uniqueness."
+        },
+        "startActivity": {
+          "$ref": "#/definitions/v1NewActivityExecutionInfo",
+          "description": "All fields of NewActivityExecutionInfo are valid except for:\n- activity_id (will be set by the server)\nThe activity id of the started activity may not match this exactly,\nit may have a timestamp appended for uniqueness."
         }
       }
     },
@@ -15954,8 +16016,31 @@
         "startWorkflowStatus": {
           "$ref": "#/definitions/v1WorkflowExecutionStatus",
           "description": "If the action was start_workflow, this field will reflect an\neventually-consistent view of the started workflow's status."
+        },
+        "startActivityResultActivityId": {
+          "type": "string",
+          "title": "If action was start_activity:"
+        },
+        "startActivityResultRunId": {
+          "type": "string"
+        },
+        "startActivityStatus": {
+          "$ref": "#/definitions/v1WorkflowExecutionStatus",
+          "description": "Uses WorkflowExecutionStatus (not ActivityExecutionStatus) because the\nstatus values are semantically identical and keeps completion handling uniform."
         }
       }
+    },
+    "v1ScheduleActivityExecution": {
+      "type": "object",
+      "properties": {
+        "activityId": {
+          "type": "string"
+        },
+        "runId": {
+          "type": "string"
+        }
+      },
+      "description": "Identifies a running activity started by a schedule."
     },
     "v1ScheduleInfo": {
       "type": "object",
@@ -16021,6 +16106,14 @@
         "invalidScheduleError": {
           "type": "string",
           "description": "Deprecated."
+        },
+        "runningActivities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1ScheduleActivityExecution"
+          },
+          "description": "Currently-running activities started by this schedule (when action is start_activity).\nOnly populated for activity schedule actions."
         }
       }
     },
@@ -16052,6 +16145,10 @@
         "workflowType": {
           "$ref": "#/definitions/v1WorkflowType",
           "title": "From action:\nAction is a oneof field, but we need to encode this in JSON and oneof fields don't work\nwell with JSON. If action is start_workflow, this is set:"
+        },
+        "activityType": {
+          "$ref": "#/definitions/v1ActivityType",
+          "description": "Set if the schedule action is start_activity."
         },
         "notes": {
           "type": "string",
