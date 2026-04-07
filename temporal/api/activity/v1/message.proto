@@ -163,6 +163,63 @@ message ActivityExecutionInfo {
     string canceled_reason = 32;
 }
 
+// NewActivityExecutionInfo is a shared message that encapsulates all the
+// required arguments to starting a standalone activity in different contexts.
+message NewActivityExecutionInfo {
+    // Identifier for this activity. Must be unique among activities in the same namespace.
+    string activity_id = 1;
+
+    // The type of the activity to execute.
+    temporal.api.common.v1.ActivityType activity_type = 2;
+
+    // Task queue to schedule the activity on.
+    temporal.api.taskqueue.v1.TaskQueue task_queue = 3;
+
+    // Serialized arguments to the activity.
+    temporal.api.common.v1.Payloads input = 4;
+
+    // Indicates how long the caller is willing to wait for an activity completion. Limits how long
+    // retries will be attempted. Either this or `start_to_close_timeout` must be specified.
+    //
+    // (-- api-linter: core::0140::prepositions=disabled
+    //     aip.dev/not-precedent: "to" is used to indicate interval. --)
+    google.protobuf.Duration schedule_to_close_timeout = 5;
+
+    // Limits time an activity task can stay in a task queue before a worker picks it up. This
+    // timeout is always non retryable, as all a retry would achieve is to put it back into the same
+    // queue. Defaults to `schedule_to_close_timeout` if not specified.
+    //
+    // (-- api-linter: core::0140::prepositions=disabled
+    //     aip.dev/not-precedent: "to" is used to indicate interval. --)
+    google.protobuf.Duration schedule_to_start_timeout = 6;
+
+    // Maximum time an activity is allowed to execute after being picked up by a worker. This
+    // timeout is always retryable. Either this or `schedule_to_close_timeout` must be
+    // specified.
+    //
+    // (-- api-linter: core::0140::prepositions=disabled
+    //     aip.dev/not-precedent: "to" is used to indicate interval. --)
+    google.protobuf.Duration start_to_close_timeout = 7;
+
+    // Maximum permitted time between successful worker heartbeats.
+    google.protobuf.Duration heartbeat_timeout = 8;
+
+    // The retry policy for the activity. Will never exceed `schedule_to_close_timeout`.
+    temporal.api.common.v1.RetryPolicy retry_policy = 9;
+
+    // Header for context propagation and tracing purposes.
+    temporal.api.common.v1.Header header = 10;
+
+    // Search attributes for indexing.
+    temporal.api.common.v1.SearchAttributes search_attributes = 11;
+
+    // Metadata for use by user interfaces to display the fixed as-of-start summary and details of the activity.
+    temporal.api.sdk.v1.UserMetadata user_metadata = 12;
+
+    // Priority metadata.
+    temporal.api.common.v1.Priority priority = 13;
+}
+
 // Limited activity information returned in the list response.
 // When adding fields here, ensure that it is also present in ActivityExecutionInfo (note that it
 // may already be present in ActivityExecutionInfo but not at the top-level).
