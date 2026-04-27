@@ -254,11 +254,18 @@ message Link {
         string run_id = 3;
     }
 
+    // A link to a schedule.
+    message Schedule {
+        string namespace = 1;
+        string schedule_id = 2;
+    }
+
     oneof variant {
         WorkflowEvent workflow_event = 1;
         BatchJob batch_job = 2;
         Activity activity = 3;
         NexusOperation nexus_operation = 4;
+        Schedule schedule = 5;
     }
 }
 
