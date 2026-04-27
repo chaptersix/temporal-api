@@ -219,3 +219,34 @@ message CallbackInfo {
     // Common callback info.
     temporal.api.callback.v1.CallbackInfo info = 2;
 }
+
+// NewActivityExecutionInfo holds config for starting a standalone activity in
+// different contexts (e.g., schedule actions). Mirrors NewWorkflowExecutionInfo.
+message NewActivityExecutionInfo {
+    // Identifier for this activity.
+    string activity_id = 1;
+    // The type of the activity.
+    temporal.api.common.v1.ActivityType activity_type = 2;
+    // Task queue to schedule this activity on.
+    temporal.api.taskqueue.v1.TaskQueue task_queue = 3;
+    // Serialized arguments to the activity.
+    temporal.api.common.v1.Payloads input = 4;
+    // Total time limit including retries.
+    google.protobuf.Duration schedule_to_close_timeout = 5;
+    // Max time waiting in task queue.
+    google.protobuf.Duration schedule_to_start_timeout = 6;
+    // Max time for a single attempt.
+    google.protobuf.Duration start_to_close_timeout = 7;
+    // Max time between heartbeats.
+    google.protobuf.Duration heartbeat_timeout = 8;
+    // Retry policy.
+    temporal.api.common.v1.RetryPolicy retry_policy = 9;
+    // Header for context propagation.
+    temporal.api.common.v1.Header header = 10;
+    // Search attributes for indexing.
+    temporal.api.common.v1.SearchAttributes search_attributes = 11;
+    // User metadata.
+    temporal.api.sdk.v1.UserMetadata user_metadata = 12;
+    // Priority metadata.
+    temporal.api.common.v1.Priority priority = 13;
+}
