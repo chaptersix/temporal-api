@@ -17,6 +17,7 @@ option csharp_namespace = "Temporalio.Api.Schedule.V1";
 import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
 
+import "temporal/api/activity/v1/message.proto";
 import "temporal/api/common/v1/message.proto";
 import "temporal/api/enums/v1/schedule.proto";
 import "temporal/api/enums/v1/workflow.proto";
@@ -229,6 +230,40 @@ message SchedulePolicies {
     bool keep_original_workflow_id = 4;
 }
 
+// Terminal status of a scheduled action, independent of the underlying execution
+// type. The scheduler maps from source-specific statuses (WorkflowExecutionStatus,
+// ActivityExecutionStatus, Nexus completion state) into this enum at the boundary.
+enum ScheduleActionStatus {
+    SCHEDULE_ACTION_STATUS_UNSPECIFIED = 0;
+    SCHEDULE_ACTION_STATUS_RUNNING = 1;
+    SCHEDULE_ACTION_STATUS_COMPLETED = 2;
+    SCHEDULE_ACTION_STATUS_FAILED = 3;
+    SCHEDULE_ACTION_STATUS_CANCELED = 4;
+    SCHEDULE_ACTION_STATUS_TERMINATED = 5;
+    SCHEDULE_ACTION_STATUS_TIMED_OUT = 6;
+}
+
+// Identifies the kind of scheduled action.
+enum ScheduleActionKind {
+    SCHEDULE_ACTION_KIND_UNSPECIFIED = 0;
+    SCHEDULE_ACTION_KIND_WORKFLOW = 1;
+    SCHEDULE_ACTION_KIND_ACTIVITY = 2;
+}
+
+// A uniform reference to a running execution started by a schedule.
+message ScheduledExecutionReference {
+    oneof execution {
+        temporal.api.common.v1.WorkflowExecution workflow = 1;
+        ScheduleActivityExecution activity = 2;
+    }
+}
+
+// Identifies a running activity started by a schedule.
+message ScheduleActivityExecution {
+    string activity_id = 1;
+    string run_id = 2;
+}
+
 message ScheduleAction {
     oneof action {
         // All fields of NewWorkflowExecutionInfo are valid except for:
@@ -237,6 +272,9 @@ message ScheduleAction {
         // The workflow id of the started workflow may not match this exactly,
         // it may have a timestamp appended for uniqueness.
         temporal.api.workflow.v1.NewWorkflowExecutionInfo start_workflow = 1;
+        // All fields of NewActivityExecutionInfo are valid except for activity_id
+        // (the scheduler generates a unique ID per run).
+        temporal.api.activity.v1.NewActivityExecutionInfo start_activity = 2;
     }
 }
 
@@ -253,6 +291,12 @@ message ScheduleActionResult {
     // If the action was start_workflow, this field will reflect an
     // eventually-consistent view of the started workflow's status.
     temporal.api.enums.v1.WorkflowExecutionStatus start_workflow_status = 12;
+
+    // Generic fields for activities, nexus ops, and future primitives:
+    ScheduledExecutionReference start_execution_result = 21;
+    ScheduleActionStatus start_execution_status = 22;
+    // Link returned by Start{Workflow,Activity}ExecutionResponse.
+    temporal.api.common.v1.Link start_execution_link = 23;
 }
 
 message ScheduleState {
@@ -337,6 +381,9 @@ message ScheduleInfo {
     // or were reset, they might still be running but with a different run_id.
     repeated temporal.api.common.v1.WorkflowExecution running_workflows = 9;
 
+    // Running executions for non-workflow action types (activities, nexus ops).
+    repeated ScheduledExecutionReference running_executions = 13;
+
     // Most recent ten actual action times (including manual triggers).
     repeated ScheduleActionResult recent_actions = 4;
 
@@ -377,6 +424,10 @@ message ScheduleListInfo {
     // From info (maybe fewer entries):
     repeated ScheduleActionResult recent_actions = 5;
     repeated google.protobuf.Timestamp future_action_times = 6;
+
+    // For non-workflow actions:
+    string action_type_name = 10;
+    ScheduleActionKind action_kind = 11;
 }
 
 // ScheduleListEntry is returned by ListSchedules.
