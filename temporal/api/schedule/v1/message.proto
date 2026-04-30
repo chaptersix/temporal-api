@@ -21,6 +21,7 @@ import "temporal/api/activity/v1/message.proto";
 import "temporal/api/common/v1/message.proto";
 import "temporal/api/enums/v1/schedule.proto";
 import "temporal/api/enums/v1/workflow.proto";
+import "temporal/api/nexus/v1/message.proto";
 import "temporal/api/workflow/v1/message.proto";
 
 // CalendarSpec describes an event specification relative to the calendar,
@@ -248,6 +249,7 @@ enum ScheduleActionKind {
     SCHEDULE_ACTION_KIND_UNSPECIFIED = 0;
     SCHEDULE_ACTION_KIND_WORKFLOW = 1;
     SCHEDULE_ACTION_KIND_ACTIVITY = 2;
+    SCHEDULE_ACTION_KIND_NEXUS_OPERATION = 3;
 }
 
 // A uniform reference to a running execution started by a schedule.
@@ -255,12 +257,19 @@ message ScheduledExecutionReference {
     oneof execution {
         temporal.api.common.v1.WorkflowExecution workflow = 1;
         ScheduleActivityExecution activity = 2;
+        ScheduleNexusOperationExecution nexus_operation = 3;
     }
 }
 
 // Identifies a running activity started by a schedule.
 message ScheduleActivityExecution {
     string activity_id = 1;
+    string run_id = 2;
+}
+
+// Identifies a running Nexus operation started by a schedule.
+message ScheduleNexusOperationExecution {
+    string operation_id = 1;
     string run_id = 2;
 }
 
@@ -275,6 +284,9 @@ message ScheduleAction {
         // All fields of NewActivityExecutionInfo are valid except for activity_id
         // (the scheduler generates a unique ID per run).
         temporal.api.activity.v1.NewActivityExecutionInfo start_activity = 2;
+        // All fields of NewNexusOperationExecutionInfo are valid except for operation_id
+        // (the scheduler generates a unique ID per run).
+        temporal.api.nexus.v1.NewNexusOperationExecutionInfo start_nexus_operation = 3;
     }
 }
 
