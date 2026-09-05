@@ -9722,6 +9722,37 @@ paths:
                 $ref: '#/components/schemas/Status'
 components:
   schemas:
+    ActionExecutionResult:
+      type: object
+      properties:
+        execution:
+          $ref: '#/components/schemas/Execution'
+        workflowStatus:
+          enum:
+            - WORKFLOW_EXECUTION_STATUS_UNSPECIFIED
+            - WORKFLOW_EXECUTION_STATUS_RUNNING
+            - WORKFLOW_EXECUTION_STATUS_COMPLETED
+            - WORKFLOW_EXECUTION_STATUS_FAILED
+            - WORKFLOW_EXECUTION_STATUS_CANCELED
+            - WORKFLOW_EXECUTION_STATUS_TERMINATED
+            - WORKFLOW_EXECUTION_STATUS_CONTINUED_AS_NEW
+            - WORKFLOW_EXECUTION_STATUS_TIMED_OUT
+            - WORKFLOW_EXECUTION_STATUS_PAUSED
+          type: string
+          format: enum
+        activityStatus:
+          enum:
+            - ACTIVITY_EXECUTION_STATUS_UNSPECIFIED
+            - ACTIVITY_EXECUTION_STATUS_RUNNING
+            - ACTIVITY_EXECUTION_STATUS_COMPLETED
+            - ACTIVITY_EXECUTION_STATUS_FAILED
+            - ACTIVITY_EXECUTION_STATUS_CANCELED
+            - ACTIVITY_EXECUTION_STATUS_TERMINATED
+            - ACTIVITY_EXECUTION_STATUS_TIMED_OUT
+            - ACTIVITY_EXECUTION_STATUS_PAUSED
+          type: string
+          format: enum
+      description: Identifies an execution started by an action and reports its current status.
     ActivityExecutionInfo:
       type: object
       properties:
@@ -10412,6 +10443,10 @@ components:
           type: string
           description: If set, override overlap policy for this request.
           format: enum
+        customOverlapPolicy:
+          allOf:
+            - $ref: '#/components/schemas/CustomOverlapPolicy'
+          description: If set, override overlap policy for this request. This may not be set together with overlap_policy.
     BadBinaries:
       type: object
       properties:
@@ -11569,6 +11604,12 @@ components:
         jobId:
           type: string
           description: Batch Job ID if force-scan flag was provided. Otherwise empty.
+    CustomOverlapPolicy:
+      type: object
+      properties:
+        name:
+          type: string
+      description: Selects an overlap policy registered by an action implementation.
     DataBlob:
       type: object
       properties:
@@ -16091,6 +16132,8 @@ components:
              - cron_schedule
              The workflow id of the started workflow may not match this exactly,
              it may have a timestamp appended for uniqueness.
+        startActivity:
+          $ref: '#/components/schemas/StartActivityExecutionInfo'
     ScheduleActionResult:
       type: object
       properties:
@@ -16122,6 +16165,14 @@ components:
             If the action was start_workflow, this field will reflect an
              eventually-consistent view of the started workflow's status.
           format: enum
+        actionExecutionResult:
+          allOf:
+            - $ref: '#/components/schemas/ActionExecutionResult'
+          description: The execution started by this action and its current status.
+        closeTime:
+          type: string
+          description: Time the execution reached a terminal status, if known.
+          format: date-time
     ScheduleInfo:
       type: object
       properties:
@@ -16177,6 +16228,21 @@ components:
         stateSizeBytes:
           type: string
           description: Size of the schedule's internal state (including payloads) in bytes.
+        runningExecutions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Execution'
+          description: Currently-running executions started by this schedule.
+        actionKind:
+          enum:
+            - EXECUTION_TYPE_UNSPECIFIED
+            - EXECUTION_TYPE_WORKFLOW
+            - EXECUTION_TYPE_ACTIVITY
+          type: string
+          description: Kind and registered type of the action.
+          format: enum
+        actionType:
+          type: string
     ScheduleListEntry:
       type: object
       properties:
@@ -16223,6 +16289,19 @@ components:
         stateSizeBytes:
           type: string
           description: Size of the schedule's internal state (including payloads) in bytes.
+        actionKind:
+          enum:
+            - EXECUTION_TYPE_UNSPECIFIED
+            - EXECUTION_TYPE_WORKFLOW
+            - EXECUTION_TYPE_ACTIVITY
+          type: string
+          description: Kind and registered type of the action.
+          format: enum
+        actionType:
+          type: string
+        runningExecutionCount:
+          type: string
+          description: Number of tracked running executions started by the schedule.
       description: |-
         ScheduleListInfo is an abbreviated set of values from Schedule and ScheduleInfo
          that's returned in ListSchedules.
@@ -16287,6 +16366,12 @@ components:
           description: |-
             If true, and the action would start a workflow, a timestamp will not be
              appended to the scheduled workflow id.
+        customOverlapPolicy:
+          allOf:
+            - $ref: '#/components/schemas/CustomOverlapPolicy'
+          description: |-
+            A named overlap policy registered by the action implementation. This may not be set together
+             with overlap_policy.
     ScheduleSpec:
       type: object
       properties:
@@ -16924,6 +17009,44 @@ components:
             Link to be associated with the WorkflowExecutionSignaled event.
              Added on the response to propagate the backlink.
              Available from Temporal server 1.31 and up.
+    StartActivityExecutionInfo:
+      type: object
+      properties:
+        activityId:
+          type: string
+          description: The activity ID may have a timestamp appended for uniqueness.
+        activityType:
+          $ref: '#/components/schemas/ActivityType'
+        taskQueue:
+          $ref: '#/components/schemas/TaskQueue'
+        scheduleToCloseTimeout:
+          pattern: ^-?(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,9})?s$
+          type: string
+        scheduleToStartTimeout:
+          pattern: ^-?(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,9})?s$
+          type: string
+        startToCloseTimeout:
+          pattern: ^-?(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,9})?s$
+          type: string
+        heartbeatTimeout:
+          pattern: ^-?(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,9})?s$
+          type: string
+        retryPolicy:
+          $ref: '#/components/schemas/RetryPolicy'
+        input:
+          $ref: '#/components/schemas/Payloads'
+        searchAttributes:
+          $ref: '#/components/schemas/SearchAttributes'
+        header:
+          $ref: '#/components/schemas/Header'
+        userMetadata:
+          $ref: '#/components/schemas/UserMetadata'
+        priority:
+          $ref: '#/components/schemas/Priority'
+        startDelay:
+          pattern: ^-?(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,9})?s$
+          type: string
+      description: Describes a standalone activity that a schedule starts.
     StartActivityExecutionRequest:
       type: object
       properties:
@@ -18150,6 +18273,10 @@ components:
             Timestamp used for the identity of the target workflow.
              If not set the default value is the current time.
           format: date-time
+        customOverlapPolicy:
+          allOf:
+            - $ref: '#/components/schemas/CustomOverlapPolicy'
+          description: If set, override overlap policy for this request. This may not be set together with overlap_policy.
     TriggerWorkflowRuleRequest:
       type: object
       properties:

@@ -13623,6 +13623,21 @@
         }
       }
     },
+    "v1ActionExecutionResult": {
+      "type": "object",
+      "properties": {
+        "execution": {
+          "$ref": "#/definitions/v1Execution"
+        },
+        "workflowStatus": {
+          "$ref": "#/definitions/v1WorkflowExecutionStatus"
+        },
+        "activityStatus": {
+          "$ref": "#/definitions/v1ActivityExecutionStatus"
+        }
+      },
+      "description": "Identifies an execution started by an action and reports its current status."
+    },
     "v1ActivityExecutionInfo": {
       "type": "object",
       "properties": {
@@ -14286,6 +14301,10 @@
         "overlapPolicy": {
           "$ref": "#/definitions/v1ScheduleOverlapPolicy",
           "description": "If set, override overlap policy for this request."
+        },
+        "customOverlapPolicy": {
+          "$ref": "#/definitions/v1CustomOverlapPolicy",
+          "description": "If set, override overlap policy for this request. This may not be set together with overlap_policy."
         }
       }
     },
@@ -15335,6 +15354,15 @@
           "description": "Batch Job ID if force-scan flag was provided. Otherwise empty."
         }
       }
+    },
+    "v1CustomOverlapPolicy": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "description": "Selects an overlap policy registered by an action implementation."
     },
     "v1DataBlob": {
       "type": "object",
@@ -19186,6 +19214,9 @@
         "startWorkflow": {
           "$ref": "#/definitions/v1NewWorkflowExecutionInfo",
           "description": "All fields of NewWorkflowExecutionInfo are valid except for:\n- workflow_id_reuse_policy\n- cron_schedule\nThe workflow id of the started workflow may not match this exactly,\nit may have a timestamp appended for uniqueness."
+        },
+        "startActivity": {
+          "$ref": "#/definitions/v1StartActivityExecutionInfo"
         }
       }
     },
@@ -19209,6 +19240,15 @@
         "startWorkflowStatus": {
           "$ref": "#/definitions/v1WorkflowExecutionStatus",
           "description": "If the action was start_workflow, this field will reflect an\neventually-consistent view of the started workflow's status."
+        },
+        "actionExecutionResult": {
+          "$ref": "#/definitions/v1ActionExecutionResult",
+          "description": "The execution started by this action and its current status."
+        },
+        "closeTime": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Time the execution reached a terminal status, if known."
         }
       }
     },
@@ -19281,6 +19321,21 @@
           "type": "string",
           "format": "int64",
           "description": "Size of the schedule's internal state (including payloads) in bytes."
+        },
+        "runningExecutions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Execution"
+          },
+          "description": "Currently-running executions started by this schedule."
+        },
+        "actionKind": {
+          "$ref": "#/definitions/v1ExecutionType",
+          "description": "Kind and registered type of the action."
+        },
+        "actionType": {
+          "type": "string"
         }
       }
     },
@@ -19339,6 +19394,18 @@
           "type": "string",
           "format": "int64",
           "description": "Size of the schedule's internal state (including payloads) in bytes."
+        },
+        "actionKind": {
+          "$ref": "#/definitions/v1ExecutionType",
+          "description": "Kind and registered type of the action."
+        },
+        "actionType": {
+          "type": "string"
+        },
+        "runningExecutionCount": {
+          "type": "string",
+          "format": "int64",
+          "description": "Number of tracked running executions started by the schedule."
         }
       },
       "description": "ScheduleListInfo is an abbreviated set of values from Schedule and ScheduleInfo\nthat's returned in ListSchedules."
@@ -19399,6 +19466,10 @@
         "keepOriginalWorkflowId": {
           "type": "boolean",
           "description": "If true, and the action would start a workflow, a timestamp will not be\nappended to the scheduled workflow id."
+        },
+        "customOverlapPolicy": {
+          "$ref": "#/definitions/v1CustomOverlapPolicy",
+          "description": "A named overlap policy registered by the action implementation. This may not be set together\nwith overlap_policy."
         }
       }
     },
@@ -19705,6 +19776,55 @@
           "description": "Link to be associated with the WorkflowExecutionSignaled event.\nAdded on the response to propagate the backlink.\nAvailable from Temporal server 1.31 and up."
         }
       }
+    },
+    "v1StartActivityExecutionInfo": {
+      "type": "object",
+      "properties": {
+        "activityId": {
+          "type": "string",
+          "description": "The activity ID may have a timestamp appended for uniqueness."
+        },
+        "activityType": {
+          "$ref": "#/definitions/v1ActivityType"
+        },
+        "taskQueue": {
+          "$ref": "#/definitions/v1TaskQueue"
+        },
+        "scheduleToCloseTimeout": {
+          "type": "string"
+        },
+        "scheduleToStartTimeout": {
+          "type": "string"
+        },
+        "startToCloseTimeout": {
+          "type": "string"
+        },
+        "heartbeatTimeout": {
+          "type": "string"
+        },
+        "retryPolicy": {
+          "$ref": "#/definitions/v1RetryPolicy"
+        },
+        "input": {
+          "$ref": "#/definitions/v1Payloads"
+        },
+        "searchAttributes": {
+          "$ref": "#/definitions/v1SearchAttributes"
+        },
+        "header": {
+          "$ref": "#/definitions/v1Header"
+        },
+        "userMetadata": {
+          "$ref": "#/definitions/v1UserMetadata"
+        },
+        "priority": {
+          "$ref": "#/definitions/v1Priority"
+        },
+        "startDelay": {
+          "type": "string"
+        }
+      },
+      "description": "Describes a standalone activity that a schedule starts."
     },
     "v1StartActivityExecutionResponse": {
       "type": "object",
@@ -20450,6 +20570,10 @@
           "type": "string",
           "format": "date-time",
           "description": "Timestamp used for the identity of the target workflow.\nIf not set the default value is the current time."
+        },
+        "customOverlapPolicy": {
+          "$ref": "#/definitions/v1CustomOverlapPolicy",
+          "description": "If set, override overlap policy for this request. This may not be set together with overlap_policy."
         }
       }
     },
