@@ -18,8 +18,11 @@ import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
 
 import "temporal/api/common/v1/message.proto";
+import "temporal/api/enums/v1/common.proto";
 import "temporal/api/enums/v1/schedule.proto";
 import "temporal/api/enums/v1/workflow.proto";
+import "temporal/api/sdk/v1/user_metadata.proto";
+import "temporal/api/taskqueue/v1/message.proto";
 import "temporal/api/workflow/v1/message.proto";
 
 // CalendarSpec describes an event specification relative to the calendar,
@@ -227,6 +230,34 @@ message SchedulePolicies {
     // If true, and the action would start a workflow, a timestamp will not be
     // appended to the scheduled workflow id.
     bool keep_original_workflow_id = 4;
+
+    // A named overlap policy registered by the action implementation. This may not be set together
+    // with overlap_policy.
+    CustomOverlapPolicy custom_overlap_policy = 5;
+}
+
+// Selects an overlap policy registered by an action implementation.
+message CustomOverlapPolicy {
+    string name = 1;
+}
+
+// Describes a standalone activity that a schedule starts.
+message StartActivityExecutionInfo {
+    // The activity ID may have a timestamp appended for uniqueness.
+    string activity_id = 1;
+    temporal.api.common.v1.ActivityType activity_type = 2;
+    temporal.api.taskqueue.v1.TaskQueue task_queue = 3;
+    google.protobuf.Duration schedule_to_close_timeout = 4;
+    google.protobuf.Duration schedule_to_start_timeout = 5;
+    google.protobuf.Duration start_to_close_timeout = 6;
+    google.protobuf.Duration heartbeat_timeout = 7;
+    temporal.api.common.v1.RetryPolicy retry_policy = 8;
+    temporal.api.common.v1.Payloads input = 9;
+    temporal.api.common.v1.SearchAttributes search_attributes = 10;
+    temporal.api.common.v1.Header header = 11;
+    temporal.api.sdk.v1.UserMetadata user_metadata = 12;
+    temporal.api.common.v1.Priority priority = 13;
+    google.protobuf.Duration start_delay = 14;
 }
 
 message ScheduleAction {
@@ -237,6 +268,7 @@ message ScheduleAction {
         // The workflow id of the started workflow may not match this exactly,
         // it may have a timestamp appended for uniqueness.
         temporal.api.workflow.v1.NewWorkflowExecutionInfo start_workflow = 1;
+        StartActivityExecutionInfo start_activity = 2;
     }
 }
 
@@ -253,6 +285,12 @@ message ScheduleActionResult {
     // If the action was start_workflow, this field will reflect an
     // eventually-consistent view of the started workflow's status.
     temporal.api.enums.v1.WorkflowExecutionStatus start_workflow_status = 12;
+
+    // The execution started by this action and its current status.
+    temporal.api.common.v1.ActionExecutionResult action_execution_result = 13;
+
+    // Time the execution reached a terminal status, if known.
+    google.protobuf.Timestamp close_time = 14;
 }
 
 message ScheduleState {
@@ -282,6 +320,9 @@ message TriggerImmediatelyRequest {
     // Timestamp used for the identity of the target workflow.
     // If not set the default value is the current time.
     google.protobuf.Timestamp scheduled_time = 2;
+
+    // If set, override overlap policy for this request. This may not be set together with overlap_policy.
+    CustomOverlapPolicy custom_overlap_policy = 3;
 }
 
 message BackfillRequest {
@@ -295,6 +336,8 @@ message BackfillRequest {
     google.protobuf.Timestamp end_time = 2;
     // If set, override overlap policy for this request.
     temporal.api.enums.v1.ScheduleOverlapPolicy overlap_policy = 3;
+    // If set, override overlap policy for this request. This may not be set together with overlap_policy.
+    CustomOverlapPolicy custom_overlap_policy = 4;
 }
 
 message SchedulePatch {
@@ -352,6 +395,13 @@ message ScheduleInfo {
 
     // Size of the schedule's internal state (including payloads) in bytes.
     int64 state_size_bytes = 12;
+
+    // Currently-running executions started by this schedule.
+    repeated temporal.api.common.v1.Execution running_executions = 13;
+
+    // Kind and registered type of the action.
+    temporal.api.enums.v1.ExecutionType action_kind = 14;
+    string action_type = 15;
 }
 
 message Schedule {
@@ -383,6 +433,13 @@ message ScheduleListInfo {
 
     // Size of the schedule's internal state (including payloads) in bytes.
     int64 state_size_bytes = 7;
+
+    // Kind and registered type of the action.
+    temporal.api.enums.v1.ExecutionType action_kind = 8;
+    string action_type = 9;
+
+    // Number of tracked running executions started by the schedule.
+    int64 running_execution_count = 10;
 }
 
 // ScheduleListEntry is returned by ListSchedules.
