@@ -14,8 +14,10 @@ import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
 
 import "temporal/api/enums/v1/common.proto";
+import "temporal/api/enums/v1/activity.proto";
 import "temporal/api/enums/v1/event_type.proto";
 import "temporal/api/enums/v1/reset.proto";
+import "temporal/api/enums/v1/workflow.proto";
 
 message DataBlob {
     temporal.api.enums.v1.EncodingType encoding_type = 1;
@@ -74,6 +76,16 @@ message Execution {
     temporal.api.enums.v1.ExecutionType type = 1;
     string business_id = 2;
     string run_id = 3;
+}
+
+// Identifies an execution started by an action and reports its current status.
+message ActionExecutionResult {
+    Execution execution = 1;
+
+    oneof status {
+        temporal.api.enums.v1.WorkflowExecutionStatus workflow_status = 2;
+        temporal.api.enums.v1.ActivityExecutionStatus activity_status = 3;
+    }
 }
 
 // Represents the identifier used by a workflow author to define the workflow. Typically, the
