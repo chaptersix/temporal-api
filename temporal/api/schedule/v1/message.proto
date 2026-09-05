@@ -247,8 +247,14 @@ message StartActivityExecutionInfo {
     string activity_id = 1;
     temporal.api.common.v1.ActivityType activity_type = 2;
     temporal.api.taskqueue.v1.TaskQueue task_queue = 3;
+    // (-- api-linter: core::0140::prepositions=disabled
+    //     aip.dev/not-precedent: "to" is used to indicate interval. --)
     google.protobuf.Duration schedule_to_close_timeout = 4;
+    // (-- api-linter: core::0140::prepositions=disabled
+    //     aip.dev/not-precedent: "to" is used to indicate interval. --)
     google.protobuf.Duration schedule_to_start_timeout = 5;
+    // (-- api-linter: core::0140::prepositions=disabled
+    //     aip.dev/not-precedent: "to" is used to indicate interval. --)
     google.protobuf.Duration start_to_close_timeout = 6;
     google.protobuf.Duration heartbeat_timeout = 7;
     temporal.api.common.v1.RetryPolicy retry_policy = 8;
